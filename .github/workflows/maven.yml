@@ -1,0 +1,82 @@
+# This workflow builds the project and creates a new GitHub Release
+# ONLY when the version in pom.xml has been updated.
+
+name: Build and Release
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build-and-release:
+    name: Build and Conditionally Release
+    runs-on: ubuntu-latest
+    # Set permissions for the GITHUB_TOKEN to allow creating releases.
+    permissions:
+      contents: write # Required to create a release
+      packages: write # Optional: useful if you also publish to GitHub Packages
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Get Project Version from pom.xml
+      id: pom
+      # This command reads the <version> tag from the pom.xml and sets it as an output.
+      run: echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+
+    - name: Get Latest GitHub Release
+      id: latest_release
+      # This uses the GitHub CLI to get the tag of the most recent release.
+      # If no releases exist, the output will be empty.
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: echo "tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // \"\"')" >> $GITHUB_OUTPUT
+
+    - name: Decide if a new release is needed
+      id: decision
+      run: |
+        # Prepend 'v' to the POM version to match common Git tag conventions (e.g., v1.2.1)
+        POM_VERSION="v${{ steps.pom.outputs.version }}"
+        LATEST_TAG="${{ steps.latest_release.outputs.tag }}"
+
+        echo "Version from pom.xml: $POM_VERSION"
+        echo "Latest release tag: $LATEST_TAG"
+
+        if [ "$POM_VERSION" == "$LATEST_TAG" ]; then
+          echo "This version is already released. No action needed."
+          echo "should_release=false" >> $GITHUB_OUTPUT
+        else
+          echo "New version detected. A new release will be created."
+          echo "should_release=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build with Maven
+      # Only build the project if a new release is required.
+      if: steps.decision.outputs.should_release == 'true'
+      run: mvn -B package --file pom.xml
+
+    - name: Create GitHub Release
+      # Only create the release if a new release is required.
+      if: steps.decision.outputs.should_release == 'true'
+      uses: softprops/action-gh-release@v2
+      with:
+        # The tag and release name will be based on the version from your pom.xml.
+        tag_name: "v${{ steps.pom.outputs.version }}"
+        name: "Release v${{ steps.pom.outputs.version }}"
+        body: |
+          Automated release of version ${{ steps.pom.outputs.version }}.
+          Changes in this release are based on the commit history leading up to this tag.
+        # This uploads the JAR file created by the 'Build with Maven' step.
+        files: target/*.jar
+        
+    - name: Update dependency graph
+      # This can run regardless of the release status.
+      uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
