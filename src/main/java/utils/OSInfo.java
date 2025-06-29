@@ -6,9 +6,16 @@ public final class OSInfo {
     private final String legacyFile;
     private final String[] command; // mutable but doesn't matter at all
 
+    private String expandTilde(String path) {
+        if (path.startsWith("~")) {
+            path = path.replaceFirst("~", System.getProperty("user.home"));
+        }
+        return path;
+    }
+    
     public OSInfo(OS os, String path, String legacyFile, String[] command) {
         this.os = os;
-        this.path = path;
+        this.path = expandTilde(path);
         this.legacyFile = legacyFile;
         this.command = command;
     }
