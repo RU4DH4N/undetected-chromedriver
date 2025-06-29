@@ -3,6 +3,7 @@ import driver.UndetectedOptions;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.util.Objects;
 
 public class Main {
 
@@ -21,7 +22,7 @@ public class Main {
             String source = driver.getPageSource();
 
             try (BufferedWriter writer = new BufferedWriter(new FileWriter("page.html"))) {
-                writer.write(source);
+                writer.write(Objects.requireNonNullElse(source, ":("));
             } catch (Exception ex) {
                 ex.printStackTrace();
             }

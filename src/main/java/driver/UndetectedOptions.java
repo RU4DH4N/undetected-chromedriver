@@ -1,8 +1,8 @@
 package driver;
 
+import org.openqa.selenium.chrome.ChromeOptions;
 import utils.OSUtils;
 import utils.UserAgentUtil;
-import org.openqa.selenium.chrome.ChromeOptions;
 
 import java.util.Collections;
 
@@ -13,10 +13,6 @@ public class UndetectedOptions extends ChromeOptions {
 
     private final boolean headless;
 
-    public boolean isHeadless() {
-        return headless;
-    }
-    
     /**
      * Instantiates a new Undetected options.
      */
@@ -92,7 +88,7 @@ public class UndetectedOptions extends ChromeOptions {
             this.addArguments("user-agent=" + UserAgentUtil.genUserAgent());
 
             try {
-                int  version = (Integer) OSUtils.getInstalledChromeVersion(OSUtils.getOS().command()).getPart(0);
+                int version = (Integer) OSUtils.getInstalledChromeVersion(OSUtils.getOS().command()).getPart(0);
                 if (version < 108) {
                     this.addArguments("--headless=chrome");
                 } else {
@@ -114,5 +110,9 @@ public class UndetectedOptions extends ChromeOptions {
         if (devToolsActivePortsFix) {
             this.addArguments("--no-sandbox", "--disable-dev-shm-usage");
         }
+    }
+
+    public boolean isHeadless() {
+        return headless;
     }
 }

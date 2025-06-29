@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import driver.LooseVersion;
 import org.apache.commons.io.IOUtils;
 
 import java.net.URI;
@@ -42,7 +41,7 @@ public final class DownloadUtils {
             throw new RuntimeException(ex.getCause());
         }
 
-        if(obj.length < 1) {
+        if (obj.length < 1) {
             throw new RuntimeException("Array Empty.");
         }
 
@@ -78,6 +77,7 @@ public final class DownloadUtils {
         LooseVersion validVersion;
 
         try {
+            // make this less shit please
             validVersion = new LooseVersion(IOUtils.toString(new URI(LEGACY_ENDPOINT + "LATEST_RELEASE_" + version.getPart(0).toString()).toURL(), StandardCharsets.UTF_8));
         } catch (Exception ex) {
             throw new RuntimeException(ex.getMessage());
@@ -86,7 +86,7 @@ public final class DownloadUtils {
         return LEGACY_ENDPOINT + validVersion + "/" + fileName;
     }
 
-    public static String getURL(OSUtils.OSInfo osInfo, LooseVersion version) {
+    public static String getURL(OSInfo osInfo, LooseVersion version) {
         JsonObject downloads = getJson(version).getAsJsonObject("downloads");
 
         String url = null;

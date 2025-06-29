@@ -3,8 +3,7 @@ package driver;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import utils.DownloadUtils;
-import utils.OSUtils;
+import utils.*;
 
 import java.io.*;
 import java.net.URI;
@@ -25,13 +24,41 @@ import java.util.zip.ZipFile;
 public class Patcher {
     private static final String EXECUTABLE = "undetected_%_chromedriver";
 
-    private static final OSUtils.OSInfo osInfo = OSUtils.getOS();
+    private static final OSInfo osInfo = OSUtils.getOS();
     private LooseVersion version;
-    private Path inputPath;
-    private final Path outputPath;
+    private File inputFile = null;
+    private File outputFile = null;
 
-    public Path getDriver() {
-        return outputPath;
+    public Patcher(File file) {
+        if (file.exists() && file.isFile()) this.inputFile = file;
+        patchInput();
+    }
+
+    public Patcher() {
+        this.version = OSUtils.getInstalledChromeVersion(osInfo.command());
+
+        this.outputFile = Paths.get(
+                osInfo.path(),
+                FileSystems.getDefault().getSeparator(),
+                EXECUTABLE.replaceFirst("%", this.version.toString()),
+                (osInfo.os() == OS.WINDOWS ? ".exe" : "")
+        ).toFile();
+
+        if (this.outputFile.exists()) {
+            outputFile.setExecutable(true);
+            return;
+        }
+
+        String url = DownloadUtils.getURL(osInfo, this.version);
+
+        Path downloaded = downloadChromeDriver(url);
+
+        this.inputFile = unzipChromedriver(downloaded).toFile();
+        patchInput();
+    }
+
+    public File getDriver() {
+        return outputFile;
     }
 
     public Path unzipChromedriver(Path zipFile) {
@@ -60,7 +87,7 @@ public class Patcher {
             throw new RuntimeException(ex.getMessage());
         }
 
-        String name = "chromedriver" + (osInfo.os() == OSUtils.OS.WINDOWS ? ".exe" : "");
+        String name = "chromedriver" + (osInfo.os() == OS.WINDOWS ? ".exe" : "");
 
         Iterator<File> files = FileUtils.iterateFiles(destination.toFile(), null, true);
 
@@ -104,36 +131,12 @@ public class Patcher {
 
         return file.toPath();
     }
-    
-    public Patcher() {
-        this(DownloadUtils.getURL(osInfo, OSUtils.getInstalledChromeVersion(osInfo.command())));
-    }
 
-    public Patcher(String downloadUrl) {
-        this.version = OSUtils.getInstalledChromeVersion(osInfo.command());
+    private void patchInput() {
+        if (this.inputFile == null) return;
 
-        this.outputPath = Paths.get(
-                osInfo.path(),
-                FileSystems.getDefault().getSeparator(),
-                EXECUTABLE.replaceFirst("%", this.version.toString()),
-                (osInfo.os() == OSUtils.OS.WINDOWS ? ".exe" : "")
-        );
-
-        if (outputPath.toFile().exists()) {
-            outputPath.toFile().setExecutable(true);
-            return;
-        }
-
-        this.inputPath = unzipChromedriver(downloadChromeDriver(downloadUrl));
-
-        if (this.inputPath == null) {
-            throw new RuntimeException("Couldn't find Chromedriver.");
-        }
-
-        assert !outputPath.toFile().exists();
-
-        try (RandomAccessFile inputFile = new RandomAccessFile(this.inputPath.toFile(), "r");
-             RandomAccessFile outputFile = new RandomAccessFile(this.outputPath.toFile(), "rw")) {
+        try (RandomAccessFile inputFile = new RandomAccessFile(this.inputFile, "r");
+             RandomAccessFile outputFile = new RandomAccessFile(this.outputFile, "rw")) {
 
             byte[] buffer = new byte[1024];
             StringBuilder builder = new StringBuilder();
@@ -160,13 +163,11 @@ public class Patcher {
             throw new RuntimeException("Failed to patch: " + ex.getMessage());
         }
 
-        outputPath.toFile().setExecutable(true);
+        outputFile.setExecutable(true);
 
         File[] files = new File(osInfo.path()).listFiles();
 
-        if (files == null) {
-            return;
-        }
+        if (files == null) return;
 
         String patchedName = EXECUTABLE.replace("%", this.version.toString());
 
@@ -178,7 +179,8 @@ public class Patcher {
                 } else if (!file.getName().equalsIgnoreCase(patchedName)) {
                     FileUtils.delete(file);
                 }
-            } catch (Exception ignore) { }
+            } catch (Exception ignore) {
+            }
         }
     }
 }

@@ -1,7 +1,5 @@
 package utils;
 
-import driver.LooseVersion;
-
 /**
  * The type User agent util.
  */
@@ -20,17 +18,18 @@ public final class UserAgentUtil {
      * @return the generated user agent.
      */
     public static String genUserAgent() {
-        OSUtils.OSInfo osInfo = OSUtils.getOS();
+        OSInfo osInfo = OSUtils.getOS();
 
         String versionName = versions[osInfo.os().ordinal() % versions.length];
         LooseVersion versionNumber = OSUtils.getInstalledChromeVersion(osInfo.command());
 
         try {
-            int majorVersion = (int)versionNumber.getPart(0);
+            int majorVersion = (int) versionNumber.getPart(0);
             if (majorVersion >= 101) {
                 versionNumber = new LooseVersion(majorVersion + ".0".repeat(versionNumber.getParts() - 1));
             }
-        } catch (Exception ignore) { }
+        } catch (Exception ignore) {
+        }
 
         return USER_AGENT.replaceFirst("%", versionName).replaceFirst("%", versionNumber.toString());
     }
