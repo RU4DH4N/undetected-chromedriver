@@ -31,6 +31,15 @@ public class Patcher {
 
     public Patcher(File file) {
         if (file.exists() && file.isFile()) this.inputFile = file;
+
+        this.version = OSUtils.getInstalledChromeVersion(osInfo.command());
+        this.outputFile = Paths.get(
+                osInfo.path(),
+                FileSystems.getDefault().getSeparator(),
+                EXECUTABLE.replaceFirst("%", this.version.toString()),
+                (osInfo.os() == OS.WINDOWS ? ".exe" : "")
+        ).toFile();
+
         patchInput();
     }
 
